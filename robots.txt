@@ -1,0 +1,4 @@
+# Allow/Disallow stuff
+#
+# User-agent: *
+# Disallow: /temp/

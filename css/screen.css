@@ -1,0 +1,122 @@
+/*
+ * Custom for QuakeInfo
+ */
+@import "reset.css";
+
+body {
+ 	font-size: 62.5%; 
+	font-family: "Trebuchet MS", Helvetica, Arial, sans-serif;
+	width: 100%;
+	margin: 0 auto;
+}
+
+body a {
+	text-decoration: none;
+	color: green;
+	font-size: 1.3em;
+}
+header {
+	text-align: center;
+	width: 100%;
+	margin-top: 10px;
+	margin: 0 auto;
+	font-size: 2em;
+	padding: 10px;
+}
+table {
+	border-collapse: collapse;
+	width: 100%;
+}
+th {
+	height: 35px;
+	background-color: green;
+	color: white;
+	vertical-align: middle;
+}
+td {
+	text-align: center;
+	height: 30px;
+	vertical-align: bottom;
+	padding: 5px;
+}
+table, th, td {
+	border: 1px solid green;
+}
+
+div#mapDisplay {
+	margin-top: 10px;
+	padding-top: 10px;
+	width: 800px;
+	margin: 0 auto;
+	height: 450px;
+	border: 6px solid #000;
+}
+
+section {
+	width: 90%;
+	margin: 0 auto;
+}
+
+#ipDiv {
+	margin-top: 10px;
+	padding-top: 10px;
+	text-align: center;
+	width: 100%;
+	margin: 0 auto;
+}
+
+#ipDiv #txtLoc {
+	color: #888;
+}
+
+#ipDiv #txtLoc:focus {
+	color: #000;
+}
+
+div#divMap {
+	margin-top: 10px;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	font-size: 1.3em;
+	width: 90%;
+	margin: 0 auto;
+	clear: both;
+}
+
+div#divMap p{
+	height: 15px;
+	margin-right: 10px;
+	text-align: right;
+}
+
+div#divMap p a:hover {
+	color: red;
+}
+
+footer {
+	font-size: 1.2em;
+	margin-top: 10px;
+	padding-top: 10px;
+	height: 50px;
+	text-align: center;
+	border-top: 1px solid green;
+}
+
+.hidden {
+	display: none;
+}
+
+noscript {
+	border: 1px solid #000;
+	width: 100%;
+	background-color: red;
+	height: 20px;
+	font-weight: bold;
+	font-size: 1.7em;
+	text-align: center;
+	position: fixed;
+	margin-top: 0;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	vertical-align: bottom;
+}

@@ -1,0 +1,305 @@
+<!-- HTML5 Ho! :) -->
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+  	<meta charset="UTF-8" />
+  
+  	<title>Earthquake Information System</title>
+  
+	<meta name="description" content="Earthquake information system written completely in JS using only GeoNames and Google Maps V2 API" />
+  	<meta name="keywords" value="Earthquake Information System, Earthquakes, Geonames, Maps" />  
+  	<link rel="stylesheet" href="css/screen.css" type="text/css" />
+  
+  	<!-- Added jQueryUI support for effects -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.6/jquery-ui.js" type="text/javascript"></script>
+
+	<!-- Added to support Google Maps API V3.3 -->
+	<script src="http://maps.google.com/maps/api/js?sensor=false" type="text/javascript"></script>
+	
+	<script type="text/javascript">
+		var geocoder;
+		var map;
+		var latlngBounds;
+		var markerArray = [];
+		var locArray = [];
+		
+		//Initializing the google.maps.Map object immediately after the body loads.
+		function initialize() {
+			geocoder = new google.maps.Geocoder();
+			var latlng = new google.maps.LatLng(0,0);
+			var myOptions = { zoom: 1, center: latlng, mapTypeId: google.maps.MapTypeId.TERRAIN };
+			map = new google.maps.Map(document.getElementById('mapDisplay'), myOptions);
+			google.maps.event.addListener(map, 'click', function(){
+				infowindow.close();
+			});
+		}
+		
+		//Given a particular location, construct a bounding box based on the 
+		//the viewport bounds and pass them to the geoNames webservice to receive
+		//lat/lng coordinates of different earthquake locations.
+		function findLocation() {
+			if($("#divMap").hasClass('shown')) {
+				$("#divMap").slideUp("slow");
+				$("#divMap").removeClass('shown');
+				$("#divMap").addClass('hidden');
+				$("#butTop10").attr("value", "Top 10 Earthquakes list");
+				$('html , body').animate({ scrollTop: 0 }, "slow");
+			}
+			var location = document.getElementById("txtLoc").value;
+			clearMarkers();
+				locArray.push(location);
+				geocoder.geocode( {'address':location}, function(results, status) {
+					if (status == google.maps.GeocoderStatus.OK) {
+						map.setCenter(results[0].geometry.location);
+						var marker = new google.maps.Marker({
+							map: map,
+							animation: google.maps.Animation.DROP,
+							title: "Location: " + results[0].address_components[0].long_name,
+							position: results[0].geometry.location
+						});
+						google.maps.event.addListener(marker, 'click', showInfo(infowindow, marker));
+						markerArray.push(marker);
+						var latlng = results[0].geometry.location;
+						latlngBounds = map.getBounds();
+						callJSONResult(latlngBounds.getNorthEast().lat(), latlngBounds.getSouthWest().lat(), latlngBounds.getNorthEast().lng(), latlngBounds.getSouthWest().lng());
+					} else {
+						if ($("#txtLoc").attr("value") == '') {
+							alert("Please enter a location name to find.");
+						} else {
+							alert("Geocode failed because: " + status);
+						}
+					}
+				});
+		}
+			
+		//handler for displaying top 10 strongest earthquakes within past year.
+		function displayTop10() {
+			if($("#divMap").hasClass('shown')) {
+				$("#divMap").slideUp("slow");
+				$("#divMap").removeClass('shown');
+				$("#divMap").addClass('hidden');
+				$("#butTop10").attr("value", "Top 10 Earthquakes list");
+				scrollPageTop();
+			} else {
+				tableTopTenEQuakes(90, -89, 180, -179);
+			}
+		}
+		
+		function scrollPageTop() {
+				$('html , body').animate({ scrollTop: 0 }, "slow");
+		}
+		
+		//Takes the bounding coordinates of the world and retrieves the 
+		//list of top 10 largest earthquakes, which is then displayed on
+		//a dynamic table.
+		function tableTopTenEQuakes(northVal, southVal, eastVal, westVal) {
+			clearMarkers();
+			map.panTo(new google.maps.LatLng(0,0));
+			map.setZoom(1);
+			var geoJSONCall = "http://ws.geonames.org/earthquakesJSON?";
+			var minMag = 7, maxRows = 200, displayRows = 10;
+			var currDate = new Date();
+			var currYear = currDate.getFullYear();
+			var currMonth = currDate.getMonth() + 1;
+			var currDay = currDate.getDate();
+			var dateEntry = currYear + "-" + currMonth + "-" + currDay;
+			
+			$.getJSON(geoJSONCall, { north: northVal, south: southVal, east: eastVal, west: westVal, date: dateEntry, minMagnitude: minMag, maxRows: maxRows}, function(data) {
+				var insertTable = "";
+				insertTable = insertTable + "<div id='divMap' class='hidden'>";
+				insertTable = insertTable + "<table id='myTbl'>";
+				insertTable = insertTable + "<thead><tr>";
+				insertTable = insertTable + "<th>No.</th>";
+				insertTable = insertTable + "<th>Magnitude</th>";
+				insertTable = insertTable + "<th>Depth</th>";
+				insertTable = insertTable + "<th>Date/Time of occurrence</th>";
+				insertTable = insertTable + "<th>Latitude/Longitude</th>";
+				insertTable = insertTable + "</tr></thead>";
+				insertTable = insertTable + "<tbody>";
+				data.earthquakes.sort(function(a, b) {
+					return parseISO8601(b.datetime) - parseISO8601(a.datetime);
+				});
+				data.earthquakes.sort(function(a, b) {
+					return b.magnitude - a.magnitude;
+				});
+				removeDatesOlderThanYear(data.earthquakes);
+				if (data.earthquakes.length < 10) { displayRows = data.earthquakes.length;}
+				
+				for (var i = 0; i < displayRows; i++) {
+					mag = data.earthquakes[i].magnitude;
+					depth = data.earthquakes[i].depth;
+					var myDate = parseISO8601(data.earthquakes[i].datetime);
+					var dateStr = myDate.getMonth()+1 + "/" + myDate.getDate() + "/" + myDate.getFullYear();
+					var timeStr = myDate.getHours() + ":" + myDate.getMinutes() + ":" + myDate.getSeconds();
+					var latlng = new google.maps.LatLng(data.earthquakes[i].lat, data.earthquakes[i].lng);
+					var marker = new google.maps.Marker({
+						map: map,
+						animation: google.maps.Animation.BOUNCE,
+						title: "Magnitude: " + mag + " \nDepth: " + depth + " \nOccurred on: " + dateStr + " at " + timeStr + " hours.",
+						position: latlng,
+						icon: "http://google-maps-icons.googlecode.com/files/flood.png"
+					});
+					insertTable = insertTable + "<tr>";
+					insertTable = insertTable + "<td>" + (i+1) + "</td>";
+					insertTable = insertTable + "<td>" + mag + "</td>";
+					insertTable = insertTable + "<td>" + depth + "</td>";
+					insertTable = insertTable + "<td>" + dateStr + " at " + timeStr + " hours." + "</td>";
+					insertTable = insertTable + "<td>" + latlng.toString() + "</td>";
+					insertTable = insertTable + "</tr>";
+					
+					google.maps.event.addListener(marker, 'click', showInfo(infowindow, marker));
+					markerArray.push(marker);
+				}
+	
+				insertTable = insertTable + "</tbody></table><br /><p>(<a href='#' onclick='scrollPageTop()'>View Map</a>)</p>";
+				$(insertTable).insertAfter($('#ipDiv'));
+				$("#butTop10").attr("value", "Close list");
+				$("#divMap").slideDown("slow");
+				$("#divMap").removeClass('hidden');
+				$("#divMap").addClass('shown');
+				$('html , body').animate({ scrollTop: $("#divMap").position().top }, "slow");
+			});
+		}
+			
+		var infowindow = new google.maps.InfoWindow({maxWidth: 200});
+		
+		function removeDatesOlderThanYear(Darray) {
+			var todaysDate = new Date();
+			todaysDate.setYear(todaysDate.getFullYear()-1);
+			for (var i = 0; i < Darray.length; i++) {
+				if (parseISO8601(Darray[i].datetime) < todaysDate) {
+					Darray.splice(i,1);
+					--i;
+				}
+			}
+		}
+		
+		//Modified the Date parser found at http://jibbering.com/faq/#parseDate
+		//to include time as well to ensure cross-browser compatibility.
+		function parseISO8601(dateStringInRange) {
+		    var isoExp = /^(\d{4})-(\d\d)-(\d\d) (\d\d)\:(\d\d)\:(\d\d).*$/,
+		        date = new Date(NaN), month,
+		        parts = isoExp.exec(dateStringInRange);
+
+		    if(parts) {
+		      month = parts[2];
+		      date.setFullYear(parts[1], month - 1, parts[3]);
+			  date.setHours(parts[4], parts[5], parts[6]);
+		      if(month != date.getMonth() + 1) {
+		        date.setTime(NaN);
+		      } 
+		    }
+		    return date;
+		  }
+			
+		//Retrieves a list of earthquake strikes ordered by magnitude in the areas
+		//closest to the desired location, bounded by the viewport.
+		function callJSONResult(northVal, southVal, eastVal, westVal) {
+			var maxRows = $("input[name=radLoc]:checked").attr("value");
+			var geoJSONCall = "http://ws.geonames.org/earthquakesJSON?";
+			$.getJSON(geoJSONCall, { north: northVal, south: southVal, east: eastVal, west: westVal, maxRows: maxRows }, function(data) {
+				for (var i = 0; i < data.earthquakes.length; i++) {
+					mag = data.earthquakes[i].magnitude;
+					depth = data.earthquakes[i].depth;
+					var myDate = parseISO8601(data.earthquakes[i].datetime);
+					var dateStr = myDate.getMonth()+1 + "/" + myDate.getDate() + "/" + myDate.getFullYear();
+					var timeStr = myDate.getHours() + ":" + myDate.getMinutes() + ":" + myDate.getSeconds();
+					var latlng = new google.maps.LatLng(data.earthquakes[i].lat, data.earthquakes[i].lng);
+					var marker = new google.maps.Marker({
+						map: map,
+						animation: google.maps.Animation.BOUNCE,
+						title: "Magnitude: " + mag + " \nDepth: " + depth + " \nOccurred on: " + dateStr + " at " + timeStr + " hours.",
+						position: latlng,
+						icon: "http://google-maps-icons.googlecode.com/files/flood.png"
+					});
+					google.maps.event.addListener(marker, 'click', showInfo(infowindow, marker));
+					markerArray.push(marker);
+				}
+			});
+		}
+		
+		//Attaches information to every marker in the map
+		function showInfo(infowindow, marker) {
+			return function() {
+				var content;
+				map.setZoom(7);
+				map.setCenter(marker.getPosition());
+				var title;
+				geocoder.geocode({'location':marker.getPosition()}, function(results, status){
+					if (status == google.maps.GeocoderStatus.OK) {
+						title = marker.getTitle().replace(/([A-Z])/g, '<br \/\>$1');
+						content = "<b>Place:</b> " + results[0].address_components[0].long_name;
+						content = content + title;
+						infowindow.setContent(content);
+						infowindow.open(map, marker);
+					} else {
+						title = marker.getTitle().replace(/([A-Z])/g, '<br \/\>$1');
+						infowindow.setContent("<b>Place:</b> Sorry, no location-specific information found. " + title);
+						infowindow.open(map, marker);
+					}
+				});
+			};
+		}
+		
+		//Used to clear all markers when their work is done.
+		function clearMarkers(flag) {
+			infowindow.close();
+			if (flag == true) {
+				if($("#divMap").hasClass('shown')) {
+					$("#divMap").slideUp("slow");
+					$("#divMap").removeClass('shown');
+					$("#divMap").addClass('hidden');
+					$("#butTop10").attr("value", "Top 10 Earthquakes list");
+					$('html , body').animate({ scrollTop: 0 }, "slow");
+				}
+				worldview();
+			}
+			clearLocations();
+			while (markerArray.length > 0) {
+				var marker = markerArray.pop();
+				marker.setMap(null);
+			}	
+		}
+		
+		//Clearing locations and wiping them off their storage.
+		function clearLocations() {
+			while (locArray.length > 0) {
+				locArray.pop();
+			}
+		}
+		
+		//Stretch out back to view the entire world in one single click.
+		function worldview() {
+			map.panTo(new google.maps.LatLng(0,0));
+			map.setZoom(1);
+		}
+	</script>
+	
+</head>
+<body onload="initialize()">
+	<noscript>Please enable JavaScript to view this page at its best.</noscript>
+	<header><h1>Earthquake Information System</h1></header>
+	<div id="mapDisplay">
+	</div>
+	
+	<section id="secMain">
+			<div id="ipDiv"><h3>At most display Earthquake locations: </h3>
+			<input type="radio" name="radLoc" value="5"> 5
+			<input type="radio" name="radLoc" value="10" checked> 10
+			<input type="radio" name="radLoc" value="20"> 20
+			<input type="radio" name="radLoc" value="30"> 30
+			<input type="radio" name="radLoc" value="50"> 50 <br />
+			<input type="text" id="txtLoc" value="E.g.: Buffalo, NY" onfocus="if(this.value=='E.g.: Buffalo, NY'){this.value=''}" onblur="if(this.value==''){this.value='E.g.: Buffalo, NY'}" onkeypress="if(event.keyCode==13){findLocation()}"/>
+			<input type="button" value="Find" onclick="findLocation()">
+			<input id="butClear" type="button" value="Clear All" onclick="clearMarkers(true)">
+			<input id="butView" type="button" value="World View" onclick="worldview()">
+			<input id="butTop10" type="button" value="Top 10 Earthquakes list" title="List of Top 10 Strongest earthquakes within past one year" onclick="displayTop10()">
+			</div>
+	</section>
+	
+	<footer><h3>2011 @ VaibhavBhembre</h3></footer>
+  	
+	<script src="js/lib/jquery-1.4.2.min.js"></script>
+  	<script src="js/site.js"></script>
+</body>
+</html>
